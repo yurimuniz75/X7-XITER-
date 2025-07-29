@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auxílio Premium</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      color: white;
+      background: black;
+      overflow: hidden;
+    }
+    .login-container, .panel-container, .admin-container {
+      position: relative;
+      z-index: 1;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 20px;
+      border-radius: 10px;
+      width: 320px;
+      margin: 100px auto;
+      text-align: center;
+    }
+    input {
+      width: 90%;
+      padding: 10px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 5px;
+      outline: none;
+    }
+    button {
+      width: auto;
+      padding: 6px 10px;
+      background: #0f0;
+      color: black;
+      border: none;
+      border-radius: 5px;
+      font-weight: bold;
+      cursor: pointer;
+      margin: 2px;
+    }
+    .toggle-link {
+      color: #0f0;
+      cursor: pointer;
+      font-size: 14px;
+      display: block;
+      margin-top: 10px;
+    }
+    .section {
+      margin-bottom: 15px;
+      text-align: left;
+    }
+    .output {
+      margin-top: 15px;
+      font-size: 14px;
+      color: #0f0;
+    }
+    #stars {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+    }
+    .user-list {
+      text-align: left;
+      max-height: 200px;
+      overflow-y: auto;
+      margin-top: 10px;
+    }
+    .user-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 5px 0;
+      padding: 5px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 5px;
+    }
+    .user-actions {
+      display: flex;
+      gap: 5px;
+    }
+    .delete-btn {
+      background: red;
+      color: white;
+    }
+    .edit-btn {
+      background: orange;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <!-- Tela de Login -->
+  <div class="login-container" id="login">
+    <h2 id="login-title">Login Premium</h2>
+    <input type="text" id="username" placeholder="Usuário">
+    <input type="password" id="password" placeholder="Senha">
+    <button id="login-btn" onclick="login()">Entrar</button>
+    <button id="register-btn" onclick="register()" style="display:none;">Cadastrar</button>
+    <span class="toggle-link" id="toggle" onclick="toggleMode()">Criar conta</span>
+    <p id="login-msg" style="color: red; font-size: 14px;"></p>
+  </div>
+
+  <!-- Painel Principal -->
+  <div class="panel-container" id="panel" style="display:none;">
+    <h2>Auxílio Premium</h2>
+    <div class="section">
+      <h3>Sistema Avançado</h3>
+      <label><input type="checkbox" id="fps"> 120 FPS</label>
+      <label><input type="checkbox" id="recoil"> No Recoil</label>
+    </div>
+    <div class="section">
+      <h3>Ajustes de Mira</h3>
+      <label><input type="checkbox" id="aimbot"> Aimbot 90%</label>
+      <label><input type="checkbox" id="head"> Head Trick</label>
+      <label><input type="checkbox" id="neural"> Neural Aim</label>
+    </div>
+    <div class="output" id="status"></div>
+    <span class="toggle-link" onclick="abrirAdmin()">⚙️ Administração</span>
+  </div>
+
+  <!-- Painel Admin -->
+  <div class="admin-container" id="admin" style="display:none;">
+    <h2>Administração</h2>
+    <div class="user-list" id="user-list"></div>
+    <button onclick="voltarPainel()">Voltar</button>
+  </div>
+
+  <canvas id="stars"></canvas>
+
+  <script>
+    // Fundo animado
+    const canvas = document.getElementById('stars');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    let stars = Array.from({length: 100}, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      radius: Math.random() * 1.5,
+      speed: Math.random() * 0.5
+    }));
+
+    function animateStars() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "white";
+      stars.forEach(star => {
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+        ctx.fill();
+        star.y += star.speed;
+        if (star.y > canvas.height) star.y = 0;
+      });
+      requestAnimationFrame(animateStars);
+    }
+    animateStars();
+
+    // Contas LocalStorage
+    let contas = JSON.parse(localStorage.getItem("contas")) || [
+      { usuario: "admin", senha: "1234" }
+    ];
+    let isRegisterMode = false;
+
+    function salvarContas() {
+      localStorage.setItem("contas", JSON.stringify(contas));
+    }
+
+    function toggleMode() {
+      isRegisterMode = !isRegisterMode;
+      document.getElementById("login-title").textContent = isRegisterMode ? "Cadastrar Conta" : "Login Premium";
+      document.getElementById("login-btn").style.display = isRegisterMode ? "none" : "block";
+      document.getElementById("register-btn").style.display = isRegisterMode ? "block" : "none";
+      document.getElementById("toggle").textContent = isRegisterMode ? "Já tem conta? Fazer login" : "Criar conta";
+      document.getElementById("login-msg").textContent = "";
+    }
+
+    function login() {
+      const user = document.getElementById("username").value;
+      const pass = document.getElementById("password").value;
+      const msg = document.getElementById("login-msg");
+
+      const contaValida = contas.find(c => c.usuario === user && c.senha === pass);
+      if (contaValida) {
+        document.getElementById("login").style.display = "none";
+        document.getElementById("panel").style.display = "block";
+      } else {
+        msg.style.color = "red";
+        msg.textContent = "Usuário ou senha incorretos!";
+      }
+    }
+
+    function register() {
+      const user = document.getElementById("username").value.trim();
+      const pass = document.getElementById("password").value.trim();
+      const msg = document.getElementById("login-msg");
+
+      if (user && pass) {
+        if (contas.find(c => c.usuario === user)) {
+          msg.style.color = "red";
+          msg.textContent = "Usuário já existe!";
+        } else {
+          contas.push({ usuario: user, senha: pass });
+          salvarContas();
+          msg.style.color = "lime";
+          msg.textContent = "Conta criada com sucesso!";
+          setTimeout(() => toggleMode(), 1000);
+        }
+      } else {
+        msg.style.color = "red";
+        msg.textContent = "Preencha todos os campos!";
+      }
+    }
+
+    // Painel de status
+    const fps = document.getElementById('fps');
+    const recoil = document.getElementById('recoil');
+    const aimbot = document.getElementById('aimbot');
+    const head = document.getElementById('head');
+    const neural = document.getElementById('neural');
+    const status = document.getElementById('status');
+
+    const updateStatus = () => {
+      status.innerHTML = `
+        120 FPS: ${fps.checked ? 'Ativado' : 'Desativado'}<br>
+        No Recoil: ${recoil.checked ? 'Ativado' : 'Desativado'}<br>
+        Aimbot 90%: ${aimbot.checked ? 'Ativado' : 'Desativado'}<br>
+        Head Trick: ${head.checked ? 'Ativado' : 'Desativado'}<br>
+        Neural Aim: ${neural.checked ? 'Ativado' : 'Desativado'}
+      `;
+    };
+    [fps, recoil, aimbot, head, neural].forEach(chk => chk.addEventListener('change', updateStatus));
+    updateStatus();
+
+    // Administração
+    function abrirAdmin() {
+      const senhaAdmin = prompt("Digite a senha de administrador:");
+      if (senhaAdmin === "1234") {
+        document.getElementById("panel").style.display = "none";
+        document.getElementById("admin").style.display = "block";
+        atualizarListaUsuarios();
+      } else {
+        alert("Senha de administrador incorreta!");
+      }
+    }
+
+    function atualizarListaUsuarios() {
+      const lista = document.getElementById("user-list");
+      lista.innerHTML = "";
+      contas.forEach((c, index) => {
+        const div = document.createElement("div");
+        div.classList.add("user-item");
+        div.innerHTML = `
+          <span>${c.usuario}</span>
+          <div class="user-actions">
+            <button class="edit-btn" onclick="editarUsuario(${index})">Editar</button>
+            <button class="delete-btn" onclick="deletarUsuario(${index})">Excluir</button>
+          </div>
+        `;
+        lista.appendChild(div);
+      });
+    }
+
+    function deletarUsuario(index) {
+      if (confirm("Tem certeza que deseja excluir esta conta?")) {
+        contas.splice(index, 1);
+        salvarContas();
+        atualizarListaUsuarios();
+      }
+    }
+
+    function editarUsuario(index) {
+      const novoUser = prompt("Novo nome de usuário:", contas[index].usuario);
+      const novaSenha = prompt("Nova senha:", contas[index].senha);
+      if (novoUser && novaSenha) {
+        contas[index].usuario = novoUser.trim();
+        contas[index].senha = novaSenha.trim();
+        salvarContas();
+        atualizarListaUsuarios();
+      } else {
+        alert("Campos não podem ficar vazios!");
+      }
+    }
+
+    function voltarPainel() {
+      document.getElementById("admin").style.display = "none";
+      document.getElementById("panel").style.display = "block";
+    }
+  </script>
+</body>
+</html>
